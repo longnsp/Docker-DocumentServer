@@ -1,4 +1,4 @@
-ARG BASE_VERSION=22.04
+ARG BASE_VERSION=24.04
 
 ARG BASE_IMAGE=ubuntu:$BASE_VERSION
 
@@ -6,7 +6,7 @@ FROM ${BASE_IMAGE} AS documentserver
 LABEL maintainer Ascensio System SIA <support@onlyoffice.com>
 
 ARG BASE_VERSION
-ARG PG_VERSION=14
+ARG PG_VERSION=16
 
 ENV OC_RELEASE_NUM=21
 ENV OC_RU_VER=12
@@ -26,7 +26,7 @@ RUN echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d && \
     apt-get -y update && \
     apt-get -yq install wget apt-transport-https gnupg locales lsb-release && \
     wget -q -O /etc/apt/sources.list.d/mssql-release.list https://packages.microsoft.com/config/ubuntu/$BASE_VERSION/prod.list && \
-    wget -q -O - https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    wget -q -O - https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \
     apt-get -y update && \
     locale-gen en_US.UTF-8 && \
     echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections && \
@@ -38,8 +38,8 @@ RUN echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d && \
         cron \
         curl \
         htop \
-        libaio1 \
-        libasound2 \
+        libaio1t64 \
+        libasound2t64 \
         libboost-regex-dev \
         libcairo2 \
         libcurl3-gnutls \
@@ -112,8 +112,8 @@ ENV COMPANY_NAME=$COMPANY_NAME \
     DS_PLUGIN_INSTALLATION=false \
     DS_DOCKER_INSTALLATION=true
 
-RUN wget -O /tmp/onlyoffice-documentserver.deb https://github.com/btactic-oo/unlimited-onlyoffice-package-builder/releases/download/onlyoffice-unlimited-build-debian-11%2F8.1.3.3/onlyoffice-documentserver_8.1.3-3-btactic_amd64.deb
-# COPY ./onlyoffice-documentserver.deb /tmp
+RUN wget -O /tmp/onlyoffice-documentserver.deb https://github.com/btactic-oo/unlimited-onlyoffice-package-builder/releases/download/onlyoffice-unlimited-build-debian-11%2F9.0.4.52/onlyoffice-documentserver_9.0.4-52-btactic_amd64.deb
+# COPY ./onlyoffice-documentserver_9.0.4-52-btactic_amd64.deb /tmp/onlyoffice-documentserver.deb
 
 RUN apt-get -y update && \
     service postgresql start && \
