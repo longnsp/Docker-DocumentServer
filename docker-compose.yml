@@ -1,9 +1,7 @@
 services:
-  onlyoffice-documentserver:
-    #build:
-    #  context: .
-    image: your_username/onlyoffice-unrestricted
-    container_name: onlyoffice-documentserver
+  onlyoffice:
+    image: onlyoffice/documentserver:unlimited-9.0.4-52 # or whatever your tag is
+    container_name: onlyoffice
     depends_on:
       - onlyoffice-postgresql
       - onlyoffice-rabbitmq
@@ -12,45 +10,67 @@ services:
       - DB_HOST=onlyoffice-postgresql
       - DB_PORT=5432
       - DB_NAME=onlyoffice
-      - DB_USER=onlyoffice
+      - DB_USER=onlyofficeuser
+      - DB_PWD=your-password
+      - AMQP_TYPE=rabbitmq
       - AMQP_URI=amqp://guest:guest@onlyoffice-rabbitmq
       # Uncomment strings below to enable the JSON Web Token validation.
-      #- JWT_ENABLED=true
-      #- JWT_SECRET=secret
-      #- JWT_HEADER=Authorization
-      #- JWT_IN_BODY=true
+      - JWT_ENABLED=true
+      - JWT_SECRET=longsecrettoken
+      - JWT_HEADER=Authorization
+      - JWT_IN_BODY=true
     ports:
-      - '80:80'
-      - '443:443'
-    stdin_open: true
+      - '8081:80' # I'm using nginx reverse proxy, so I map port 80 to 8081
+#      - '443:443'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/info/info.json"]
+      interval: 30s
+      retries: 5
+      start_period: 60s
+      timeout: 10s
     restart: always
-    stop_grace_period: 60s
     volumes:
-       - /var/www/onlyoffice/Data
-       - /var/log/onlyoffice
-       - /var/lib/onlyoffice/documentserver/App_Data/cache/files
-       - /var/www/onlyoffice/documentserver-example/public/files
-       - /usr/share/fonts
-       
+       - ./log:/var/log/onlyoffice       # logs    
+       - ./data:/var/www/onlyoffice/Data # certificates
+       - ./filecache:/var/lib/onlyoffice # file cache
+    networks:
+      - nextcloud
   onlyoffice-rabbitmq:
     container_name: onlyoffice-rabbitmq
-    image: rabbitmq
+    image: rabbitmq:4.1.4
     restart: always
-    #expose:
-    #  - '5672'
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 10s
+      retries: 3
+      start_period: 10s
+      timeout: 10s
+    networks:
+      - nextcloud
 
   onlyoffice-postgresql:
     container_name: onlyoffice-postgresql
-    image: postgres:12
+    image: postgres:15
     environment:
       - POSTGRES_DB=onlyoffice
-      - POSTGRES_USER=onlyoffice
-      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_USER=onlyofficeuser
+      - POSTGRES_PASSWORD=Atm@123456
+      - TZ=Asia/Ho_Chi_Minh
     restart: always
-    #expose:
-    #  - '5432'
     volumes:
-      - postgresql_data:/var/lib/postgresql
+      - ./dbdata:/var/lib/postgresql
+    command: >
+      -c max_connections=250
+      -c log_timezone='Asia/Ho_Chi_Minh'
+      -c timezone='Asia/Ho_Chi_Minh'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onlyoffice"]
+      interval: 10s
+      retries: 3
+      start_period: 10s
+      timeout: 10s
+    networks:
+      - nextcloud
 
-volumes:
-  postgresql_data:
+networks:
+  nextcloud:
